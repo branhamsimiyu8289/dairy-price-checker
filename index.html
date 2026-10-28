@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e6b46">
+<title>Milk price checker · Maziwa Co-op</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+:root{--paper:#eef3f0;--ink:#14231c;--muted:#5b6b63;--pasture:#1e6b46;--can:#3c4b54;--butter:#f0b429;--card:#fff;--line:#cfdad4;--bad:#a8321f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.45 "Avenir Next","Segoe UI",system-ui,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--pasture);color:#fff}
+header a{color:#fff;text-decoration:none;font-weight:700}
+header #navlink{font-weight:500;opacity:.9;border:1px solid #ffffff66;border-radius:99px;padding:4px 14px;font-size:15px}
+main{max-width:640px;margin:0 auto;padding:20px}
+[hidden]{display:none!important}
+.live{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:15px;margin:4px 0}
+#dot{width:9px;height:9px;border-radius:50%;background:var(--bad)}#dot.on{background:#2fa564}
+.price{font-size:clamp(52px,17vw,88px);line-height:1;margin:6px 0 22px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.price small{font-size:20px;font-weight:500;letter-spacing:0;color:var(--muted)}
+label{display:block;font-weight:600;margin-bottom:14px}
+input{display:block;width:100%;margin-top:6px;padding:14px;font:inherit;border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+input:focus,button:focus-visible,a:focus-visible{outline:3px solid var(--butter);outline-offset:2px}
+.slip{background:var(--card);padding:22px 20px 26px;border-radius:14px 14px 0 0;position:relative;margin-bottom:26px;
+ --z:linear-gradient(135deg,var(--card) 50%,transparent 50%),linear-gradient(225deg,var(--card) 50%,transparent 50%)}
+.slip::after{content:"";position:absolute;left:0;right:0;top:100%;height:12px;background:var(--z);background-size:24px 12px;background-repeat:repeat-x;transform:scaleY(-1)}
+.calc{margin:6px 0 18px;border-top:2px dashed var(--line);padding-top:12px}
+.calc div{display:flex;justify-content:space-between;padding:4px 0;font-variant-numeric:tabular-nums}
+.calc dt{color:var(--muted)}.calc dd{margin:0;font-weight:600}
+.calc .tot{margin-top:8px;padding-top:12px;border-top:2px dashed var(--line);align-items:baseline}
+.calc .tot dt{color:var(--ink);font-weight:700}.calc .tot dd{font-size:32px;font-weight:800;color:var(--pasture)}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:14px 20px;background:var(--pasture);color:#fff;cursor:pointer;width:100%}
+button.alt{background:var(--can)}button.ghost{background:transparent;color:var(--can);border:2px solid var(--line);width:auto;padding:8px 14px;font-size:15px}
+button:disabled{opacity:.5;cursor:not-allowed}
+#msg,.err{min-height:1.4em;margin:12px 0 0;font-weight:600}.ok{color:var(--pasture)}.bad,.err{color:var(--bad)}
+.panel{background:var(--card);border-radius:14px;padding:20px;margin-bottom:18px}
+.row{display:flex;gap:10px;align-items:flex-end}.row label{flex:1;margin:0}.row button{width:auto}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.stats div{background:var(--card);border-radius:12px;padding:12px}.stats b{display:block;font-size:20px;font-variant-numeric:tabular-nums}.stats span{color:var(--muted);font-size:14px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+th{text-align:left;color:var(--muted);font-weight:600;border-bottom:2px solid var(--line);padding:6px}td{padding:8px 6px;border-bottom:1px solid var(--line)}
+td.n,th.n{text-align:right}h2{margin:0 0 12px;font-size:20px}
+@media(prefers-reduced-motion:no-preference){.price{transition:color .6s}.price.flash{color:var(--butter)}}
+</style>
+</head>
+<body>
+<header><a href="#/">Maziwa Co-op</a><a href="#/admin" id="navlink">Admin</a></header>
+<main>
+<section id="client">
+  <p class="live"><i id="dot"></i><span id="ptime">Checking today’s price…</span></p>
+  <h1 class="price"><span id="pnum">–</span><small> per litre</small></h1>
+  <form id="f" class="slip" autocomplete="off">
+    <label>Your name<input id="name" list="fl" required minlength="2" maxlength="80"></label>
+    <datalist id="fl"></datalist>
+    <label>Litres delivered today<input id="litres" type="number" inputmode="decimal" min="0.1" max="10000" step="0.1" required></label>
+    <dl class="calc">
+      <div><dt>Litres</dt><dd id="cl">0</dd></div>
+      <div><dt>Price per litre</dt><dd id="cp">–</dd></div>
+      <div class="tot"><dt>You are owed</dt><dd id="ct">KSh 0.00</dd></div>
+    </dl>
+    <button id="save">Save delivery</button>
+    <p id="msg" role="status"></p>
+  </form>
+</section>
+
+<section id="login" hidden>
+  <div class="panel"><h2>Admin sign in</h2>
+    <form id="lf"><label>Password<input id="pw" type="password" required autocomplete="current-password"></label>
+    <button class="alt">Sign in</button><p class="err" id="lerr" role="alert"></p></form></div>
+</section>
+
+<section id="dash" hidden>
+  <div class="panel"><h2>Today’s price per litre</h2>
+    <form id="pf" class="row">    <label>New price (KSh)<input id="newp" type="number" inputmode="decimal" min="0.01" max="10000" step="0.01" required></label><button>Update price</button></form>
+    <p id="pmsg" role="status" class="ok"></p></div>
+  <div class="row" style="margin-bottom:14px"><label>Deliveries on<input id="day" type="date"></label><button class="ghost" id="out" type="button">Sign out</button></div>
+  <div class="stats"><div><b id="sf">0</b><span>Farmers</span></div><div><b id="sl">0</b><span>Litres</span></div><div><b id="st">0</b><span>Total payable</span></div></div>
+  <div class="panel tw"><table><thead><tr><th>Time</th><th>Farmer</th><th class="n">Litres</th><th class="n">Price</th><th class="n">Total</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+  <p id="empty" class="ok" style="color:var(--muted)" hidden>No deliveries recorded for this day.</p></div>
+</section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const KES = n => "KSh " + Number(n).toLocaleString("en-KE", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+let price = 0, token = sessionStorage.getItem("tok") || "";
+const store = {get: k => { try { return localStorage.getItem(k) } catch { return null } }, set: (k, v) => { try { localStorage.setItem(k, v) } catch {} }};
+
+async function api(path, opts = {}) {
+  const headers = new Headers(opts.headers);
+  if (opts.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", "Bearer " + token);
+  const r = await fetch(path, {...opts, headers});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(typeof j.detail === "string" ? j.detail : "Please check the values entered"); e.status = r.status; throw e; }
+  return j;
+}
+
+function setPrice(p, cached) {
+  const changed = price && p.price !== price;
+  price = p.price;
+  store.set("price", JSON.stringify(p));
+  $("#pnum").textContent = price > 0 ? KES(price) : "Not set";
+  $("#cp").textContent = price > 0 ? KES(price) : "–";
+  $("#ptime").textContent = price > 0 ? "Set " + new Date(p.updated).toLocaleString("en-KE", {dateStyle: "medium", timeStyle: "short"}) + (cached ? " (saved copy)" : "") : "The admin has not set today’s price yet";
+  $("#newp").placeholder = price || "";
+  if (changed) { $("#pnum").parentElement.classList.add("flash"); setTimeout(() => $("#pnum").parentElement.classList.remove("flash"), 1200); }
+  calc();
+}
+function calc() {
+  const l = parseFloat($("#litres").value) || 0;
+  $("#cl").textContent = l;
+  $("#ct").textContent = KES(l * price);
+  $("#save").disabled = !(price > 0 && l > 0 && navigator.onLine);
+}
+$("#litres").oninput = calc;
+
+function live() {
+  const es = new EventSource("/api/stream");
+  es.onopen = () => $("#dot").classList.add("on");
+  es.onmessage = e => {
+    try { $("#dot").classList.add("on"); setPrice(JSON.parse(e.data)); }
+    catch (err) { $("#ptime").textContent = "Could not read the latest price"; console.error(err); }
+  };
+  es.onerror = () => {
+    $("#dot").classList.remove("on");
+    const c = store.get("price");
+    if (c && !price) {
+      try { setPrice(JSON.parse(c), true); }
+      catch (err) { console.error("Could not read the saved price", err); }
+    }
+  };
+}
+async function loadFarmers() {
+  try {
+    const names = await api("/api/farmers");
+    $("#fl").replaceChildren(...names.map(name => {
+      const option = document.createElement("option");
+      option.value = name;
+      return option;
+    }));
+  } catch (err) {
+    $("#msg").textContent = "Could not load farmer names: " + err.message;
+    $("#msg").className = "bad";
+  }
+}
+
+$("#f").onsubmit = async e => {
+  e.preventDefault();
+  const m = $("#msg"); m.className = "";
+  try {
+    const r = await api("/api/entries", {method: "POST", body: JSON.stringify({name: $("#name").value, litres: parseFloat($("#litres").value)})});
+    m.textContent = `Saved: ${r.litres} L = ${KES(r.total)} for ${r.name}`; m.className = "ok";
+    $("#litres").value = ""; calc(); loadFarmers();
+  } catch (err) { m.textContent = err.message; m.className = "bad"; }
+};
+
+/* admin */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+$("#lf").onsubmit = async e => {
+  e.preventDefault(); $("#lerr").textContent = "";
+  try { token = (await api("/api/admin/login", {method: "POST", body: JSON.stringify({password: $("#pw").value})})).token; sessionStorage.setItem("tok", token); $("#pw").value = ""; route(); }
+  catch (err) { $("#lerr").textContent = err.message; }
+};
+$("#pf").onsubmit = async e => {
+  e.preventDefault();
+  try {
+    const p = await api("/api/admin/price", {method: "POST", body: JSON.stringify({price: parseFloat($("#newp").value)})});
+    setPrice(p);
+    $("#pmsg").textContent = "Price updated. Farmers see it now.";
+    $("#newp").value = "";
+  }
+  catch (err) { $("#pmsg").textContent = err.message; }
+};
+$("#out").onclick = () => { token = ""; sessionStorage.removeItem("tok"); route(); };
+$("#day").onchange = loadEntries;
+async function loadEntries() {
+  try {
+    const d = await api("/api/admin/entries?day=" + $("#day").value);
+    $("#sf").textContent = d.farmers; $("#sl").textContent = d.litres; $("#st").textContent = KES(d.total);
+    $("#empty").hidden = d.entries.length > 0;
+    $("#rows").innerHTML = d.entries.map(r => `<tr><td>${esc(r.created.slice(11, 16))}</td><td>${esc(r.farmer_name)}</td><td class="n">${r.litres}</td><td class="n">${r.price}</td><td class="n">${KES(r.total)}</td><td><button class="ghost" data-id="${r.id}" aria-label="Delete entry for ${esc(r.farmer_name)}">Delete</button></td></tr>`).join("");
+  } catch (err) {
+    if (err.status === 401) $("#out").click();
+    else $("#pmsg").textContent = "Could not load deliveries: " + err.message;
+  }
+}
+$("#rows").onclick = async e => {
+  const button = e.target.closest("button[data-id]");
+  if (!button || !confirm("Delete this entry?")) return;
+  try {
+    await api("/api/admin/entries/" + encodeURIComponent(button.dataset.id), {method: "DELETE"});
+    await loadEntries();
+  } catch (err) {
+    $("#pmsg").textContent = "Could not delete delivery: " + err.message;
+  }
+};
+
+function localDate() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function route() {
+  const admin = location.hash.startsWith("#/admin");
+  $("#client").hidden = admin; $("#login").hidden = !admin || !!token; $("#dash").hidden = !admin || !token;
+  $("#navlink").textContent = admin ? "Farmer view" : "Admin"; $("#navlink").href = admin ? "#/" : "#/admin";
+  if (admin && token) { if (!$("#day").value) $("#day").value = localDate(); loadEntries(); }
+}
+addEventListener("hashchange", route); addEventListener("online", calc); addEventListener("offline", calc);
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+route(); live(); loadFarmers();
+</script>
+</body>
+</html>

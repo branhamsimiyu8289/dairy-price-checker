@@ -1,0 +1,8 @@
+{
+  "name": "Dairy Co-op Price Checker",
+  "short_name": "Maziwa Co-op",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef3f0",
+  "theme_color": "#1e6b46"
+}
