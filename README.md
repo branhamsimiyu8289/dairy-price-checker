@@ -1,5 +1,7 @@
 # Dairy Price Checker (FastAPI + vanilla PWA)
 
+Run this on your terminal.
+
     pip install -r requirements.txt
 
 On Windows PowerShell:
